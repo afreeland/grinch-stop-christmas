@@ -12,6 +12,7 @@ Wiring Notes:
 import board
 import digitalio
 import time
+import random
 
 # ============================================================================
 # GPIO Configuration
@@ -32,10 +33,14 @@ microswitch.pull = digitalio.Pull.UP  # Internal pull-up: LOW when pressed
 USE_SPEED_CONTROL = True  # Set to True to enable slower speed
 
 # Adjust these values to control motor speed (only used if USE_SPEED_CONTROL = True)
-MOTOR_ON_TIME = 0.01   # Time motor is ON (seconds) - lower = slower
-MOTOR_OFF_TIME = 0.02  # Time motor is OFF (seconds) - higher = slower
+MOTOR_ON_TIME = 0.008   # Time motor is ON (seconds) - lower = slower
+MOTOR_OFF_TIME = 0.025  # Time motor is OFF (seconds) - higher = slower
 # Effective speed = MOTOR_ON_TIME / (MOTOR_ON_TIME + MOTOR_OFF_TIME)
-# Example: 0.01 / (0.01 + 0.02) = 33% speed
+# Example: 0.008 / (0.008 + 0.025) = ~24% speed (slower than before)
+
+# Random delay before motor starts (after toggle is turned on)
+DELAY_MIN = 0.5   # Minimum delay in seconds
+DELAY_MAX = 1.5   # Maximum delay in seconds
 
 # GPIO 14 & 15 - DC Motor Direction Control
 motor_pin_a = digitalio.DigitalInOut(board.GP14)
@@ -189,11 +194,14 @@ def handle_toggle_change(is_high):
     global current_state
     
     if is_high:
-        print("[TOGGLE HIGH] Christmas is ON - starting extension...")
+        print("[TOGGLE HIGH] Christmas is ON - Grinch is thinking...")
         # Person flipped toggle to HIGH - start extending arm
         # Note: Limit switch may be pressed when arm is retracted (normal starting position)
         if current_state == IDLE:
-            # Start extending - limit switch being pressed is normal when retracted
+            # Add random delay before starting (makes it more "grinchy" and less predictable)
+            delay = random.uniform(DELAY_MIN, DELAY_MAX)
+            print(f"[ACTION] Waiting {delay:.2f}s before extending...")
+            time.sleep(delay)
             print("[ACTION] Starting extension from retracted position...")
             if USE_SPEED_CONTROL:
                 motor_forward_pulsed()
