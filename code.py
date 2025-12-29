@@ -2,11 +2,17 @@
 CircuitPython Useless Box
 Reads GPIO 4 (toggle switch) and GPIO 5 (microswitch)
 Controls DC motor on GPIO 14 and GPIO 15
+Controls Christmas lights via GPIO 16
 
 Wiring Notes:
 - GPIO 4 (Toggle Switch): 6-pin 3-state toggle switch
 - GPIO 5 (Microswitch): Roller style microswitch
 - GPIO 14 & 15: DC motor direction control (R_en and L_en are hardwired HIGH)
+- GPIO 16: LED control (via transistor/MOSFET)
+  - Connect GPIO 16 -> Transistor base/gate
+  - Connect LEDs + -> 3V3 (or external 3V supply)
+  - Connect LEDs - -> Transistor collector/drain
+  - Connect Transistor emitter/source -> GND
 """
 
 import board
@@ -28,15 +34,21 @@ microswitch = digitalio.DigitalInOut(board.GP5)
 microswitch.direction = digitalio.Direction.INPUT
 microswitch.pull = digitalio.Pull.UP  # Internal pull-up: LOW when pressed
 
+# GPIO 16 - Christmas Lights Control (via transistor)
+# HIGH = lights ON, LOW = lights OFF
+christmas_lights = digitalio.DigitalInOut(board.GP16)
+christmas_lights.direction = digitalio.Direction.OUTPUT
+christmas_lights.value = False  # Start with lights OFF
+
 # Motor speed control using pulse-width modulation (time-based)
 # Set USE_SPEED_CONTROL to False for full speed, True for controlled speed
-USE_SPEED_CONTROL = True  # Set to True to enable slower speed
+USE_SPEED_CONTROL = False  # DISABLED: Full power needed to push through toggle switch resistance
 
 # Adjust these values to control motor speed (only used if USE_SPEED_CONTROL = True)
-MOTOR_ON_TIME = 0.008   # Time motor is ON (seconds) - lower = slower
-MOTOR_OFF_TIME = 0.025  # Time motor is OFF (seconds) - higher = slower
+MOTOR_ON_TIME = 0.020   # Time motor is ON (seconds) - lower = slower
+MOTOR_OFF_TIME = 0.005  # Time motor is OFF (seconds) - higher = slower
 # Effective speed = MOTOR_ON_TIME / (MOTOR_ON_TIME + MOTOR_OFF_TIME)
-# Example: 0.008 / (0.008 + 0.025) = ~24% speed (slower than before)
+# Example: 0.020 / (0.020 + 0.005) = ~80% speed (high torque for pushing toggle)
 
 # Random delay before motor starts (after toggle is turned on)
 DELAY_MIN = 0.5   # Minimum delay in seconds
@@ -130,6 +142,20 @@ def get_microswitch_state():
     return "PRESSED" if read_microswitch() else "RELEASED"
 
 # ============================================================================
+# Christmas Lights Control Functions
+# ============================================================================
+
+def lights_on():
+    """Turn Christmas lights ON"""
+    christmas_lights.value = True
+    print("[LIGHTS] Christmas lights ON")
+
+def lights_off():
+    """Turn Christmas lights OFF"""
+    christmas_lights.value = False
+    print("[LIGHTS] Christmas lights OFF")
+
+# ============================================================================
 # Motor Control Functions
 # ============================================================================
 
@@ -207,6 +233,8 @@ def handle_toggle_change(is_high):
     global current_state, extension_start_time, should_pause_this_cycle, pause_start_time, pause_duration
     
     if is_high:
+        # Turn on Christmas lights when toggle goes HIGH
+        lights_on()
         print("[TOGGLE HIGH] Christmas is ON - Grinch is thinking...")
         # Person flipped toggle to HIGH - start extending arm
         # Note: Limit switch may be pressed when arm is retracted (normal starting position)
@@ -241,6 +269,8 @@ def handle_toggle_change(is_high):
             set_state(EXTENDING)
     else:
         print("[TOGGLE LOW] Toggle switch is LOW")
+        # Turn off Christmas lights when toggle goes LOW
+        lights_off()
         # If we're extending (or paused) and toggle goes LOW, arm hit it - reverse
         if current_state == EXTENDING or current_state == EXTENDING_PAUSED:
             print("[ACTION] Arm hit toggle! Stopping and reversing...")
@@ -326,6 +356,7 @@ print("=" * 50)
 print("GPIO 4: Toggle Switch (person flips this)")
 print("GPIO 5: Microswitch (limit switch - arm position)")
 print("GPIO 14 & 15: DC Motor Control")
+print("GPIO 16: Christmas Lights Control")
 print("")
 print("Behavior:")
 print("  - Toggle LOW: Christmas OFF, do nothing (idle, arm retracted)")
@@ -353,6 +384,12 @@ set_state(IDLE)
 # Initialize previous states
 prev_toggle_state = read_toggle_switch()
 prev_microswitch_state = read_microswitch()
+
+# Initialize Christmas lights to match initial toggle state
+if prev_toggle_state:
+    lights_on()
+else:
+    lights_off()
 
 # Initialize timing variables
 extension_start_time = None
