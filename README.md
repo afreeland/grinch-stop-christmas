@@ -4,9 +4,13 @@ A CircuitPython project for reading GPIO inputs (microswitch and toggle switch) 
 
 ## Project Videos
 
-🎬 **[Watch the completed/working version on YouTube](https://youtu.be/qPNQ77u-mzM)**
+### Completed/Working Version
 
-🔧 **[Behind the scenes - Progress and components outside the box](https://youtu.be/nJ25WAER2go)**
+[![Completed Grinch Box](https://img.youtube.com/vi/qPNQ77u-mzM/0.jpg)](https://youtu.be/qPNQ77u-mzM)
+
+### Behind the Scenes - Progress & Components
+
+[![Behind the Scenes](https://img.youtube.com/vi/nJ25WAER2go/0.jpg)](https://youtu.be/nJ25WAER2go)
 
 ## Setup
 
