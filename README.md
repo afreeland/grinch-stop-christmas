@@ -2,6 +2,12 @@
 
 A CircuitPython project for reading GPIO inputs (microswitch and toggle switch) for a useless box.
 
+## Project Videos
+
+🎬 **[Watch the completed/working version on YouTube](https://youtu.be/qPNQ77u-mzM)**
+
+🔧 **[Behind the scenes - Progress and components outside the box](https://youtu.be/nJ25WAER2go)**
+
 ## Setup
 
 1. **Connect your CircuitPython device** via USB
