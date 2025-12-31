@@ -3,6 +3,7 @@ CircuitPython Useless Box
 Reads GPIO 4 (toggle switch) and GPIO 5 (microswitch)
 Controls DC motor on GPIO 14 and GPIO 15
 Controls Christmas lights via GPIO 16
+Controls soundboard via GPIO 17-21
 
 Wiring Notes:
 - GPIO 4 (Toggle Switch): 6-pin 3-state toggle switch
@@ -13,6 +14,14 @@ Wiring Notes:
   - Connect LEDs + -> 3V3 (or external 3V supply)
   - Connect LEDs - -> Transistor collector/drain
   - Connect Transistor emitter/source -> GND
+- GPIO 19-26: Soundboard triggers (IO1-IO5)
+  - GPIO 21 -> Soundboard IO1 (Christmas bells - plays when toggle ON)
+  - GPIO 26 -> Soundboard IO2 (Grinch voice - random when toggle OFF)
+  - GPIO 22 -> Soundboard IO3 (Grinch voice - random when toggle OFF)
+  - GPIO 20 -> Soundboard IO4 (Grinch voice - random when toggle OFF)
+  - GPIO 19 -> Soundboard IO5 (Grinch voice - random when toggle OFF)
+  - Soundboard triggers by shorting IO pin to GND
+  - Pico pins normally HIGH, pull LOW briefly to trigger
 """
 
 import board
@@ -39,6 +48,37 @@ microswitch.pull = digitalio.Pull.UP  # Internal pull-up: LOW when pressed
 christmas_lights = digitalio.DigitalInOut(board.GP16)
 christmas_lights.direction = digitalio.Direction.OUTPUT
 christmas_lights.value = False  # Start with lights OFF
+
+# GPIO 19-26 - Soundboard Triggers (IO1-IO5)
+# Soundboard triggers by shorting IO pin to GND
+# Pico pins: HIGH = not triggering, LOW = trigger sound
+# IO1 = Christmas bells (plays when toggle ON) - GP21
+# IO2-IO5 = Grinch voice (random when toggle OFF)
+soundboard_io1 = digitalio.DigitalInOut(board.GP21)  # Christmas bells
+soundboard_io1.direction = digitalio.Direction.OUTPUT
+soundboard_io1.value = True  # HIGH = not triggering
+
+soundboard_io2 = digitalio.DigitalInOut(board.GP26)  # Grinch voice 1
+soundboard_io2.direction = digitalio.Direction.OUTPUT
+soundboard_io2.value = True
+
+soundboard_io3 = digitalio.DigitalInOut(board.GP22)  # Grinch voice 2
+soundboard_io3.direction = digitalio.Direction.OUTPUT
+soundboard_io3.value = True
+
+soundboard_io4 = digitalio.DigitalInOut(board.GP20)  # Grinch voice 3
+soundboard_io4.direction = digitalio.Direction.OUTPUT
+soundboard_io4.value = True
+
+soundboard_io5 = digitalio.DigitalInOut(board.GP19)  # Grinch voice 4
+soundboard_io5.direction = digitalio.Direction.OUTPUT
+soundboard_io5.value = True
+
+# Store all Grinch voice pins in a list for random selection
+grinch_voice_pins = [soundboard_io2, soundboard_io3, soundboard_io4, soundboard_io5]
+
+# Soundboard control - set to False to disable sounds if power issues
+ENABLE_SOUNDS = True  # Set to False to disable all soundboard triggers
 
 # Motor speed control using pulse-width modulation (time-based)
 # Set USE_SPEED_CONTROL to False for full speed, True for controlled speed
@@ -156,6 +196,38 @@ def lights_off():
     print("[LIGHTS] Christmas lights OFF")
 
 # ============================================================================
+# Soundboard Control Functions
+# ============================================================================
+
+def trigger_sound(pin, duration=0.1):
+    """
+    Trigger a soundboard sound by pulling pin LOW briefly
+    pin: The GPIO pin to trigger
+    duration: How long to hold LOW (seconds) - default 100ms should be enough
+    """
+    pin.value = False  # Pull LOW to trigger
+    time.sleep(duration)
+    pin.value = True   # Return to HIGH
+    print(f"[SOUND] Triggered sound on GPIO {pin}")
+
+def play_christmas_bells():
+    """Play Christmas bells sound (IO1) - always plays when toggle ON"""
+    if not ENABLE_SOUNDS:
+        return
+    trigger_sound(soundboard_io1)
+    print("[SOUND] 🎄 Christmas bells playing!")
+
+def play_random_grinch_voice():
+    """Play a random Grinch voice sound (IO2-IO5) - plays when toggle OFF"""
+    if not ENABLE_SOUNDS:
+        return
+    selected_pin = random.choice(grinch_voice_pins)
+    pin_number = {soundboard_io2: "GP26", soundboard_io3: "GP22", 
+                  soundboard_io4: "GP20", soundboard_io5: "GP19"}[selected_pin]
+    trigger_sound(selected_pin)
+    print(f"[SOUND] 🎭 Grinch voice playing! ({pin_number})")
+
+# ============================================================================
 # Motor Control Functions
 # ============================================================================
 
@@ -235,6 +307,8 @@ def handle_toggle_change(is_high):
     if is_high:
         # Turn on Christmas lights when toggle goes HIGH
         lights_on()
+        # Play Christmas bells sound
+        play_christmas_bells()
         print("[TOGGLE HIGH] Christmas is ON - Grinch is thinking...")
         # Person flipped toggle to HIGH - start extending arm
         # Note: Limit switch may be pressed when arm is retracted (normal starting position)
@@ -271,6 +345,8 @@ def handle_toggle_change(is_high):
         print("[TOGGLE LOW] Toggle switch is LOW")
         # Turn off Christmas lights when toggle goes LOW
         lights_off()
+        # Play random Grinch voice when Christmas is turned off
+        play_random_grinch_voice()
         # If we're extending (or paused) and toggle goes LOW, arm hit it - reverse
         if current_state == EXTENDING or current_state == EXTENDING_PAUSED:
             print("[ACTION] Arm hit toggle! Stopping and reversing...")
@@ -357,6 +433,8 @@ print("GPIO 4: Toggle Switch (person flips this)")
 print("GPIO 5: Microswitch (limit switch - arm position)")
 print("GPIO 14 & 15: DC Motor Control")
 print("GPIO 16: Christmas Lights Control")
+print("GPIO 21: Soundboard IO1 (Christmas bells)")
+print("GPIO 26, 22, 20, 19: Soundboard IO2-IO5 (Grinch voice)")
 print("")
 print("Behavior:")
 print("  - Toggle LOW: Christmas OFF, do nothing (idle, arm retracted)")
